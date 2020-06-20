@@ -12,6 +12,7 @@ import android.view.Gravity;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.baidu.codereview.Constants;
 import com.baidu.codereview.R;
 import com.baidu.codereview.bean.SpBean;
 import com.baidu.codereview.ipconfig.Api;
@@ -51,6 +52,7 @@ public class SplashActivity extends BaseActivity {
     // 要申请的权限
     private String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
     private ImageView mImgSplash;
+
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -88,7 +90,7 @@ public class SplashActivity extends BaseActivity {
     }
 
     private void startRequestPermission() {
-        ActivityCompat.requestPermissions(this, permissions, 321);
+        ActivityCompat.requestPermissions(this, permissions, Constants.resultCode);
     }
 
     private void postDelayed() {
@@ -191,7 +193,7 @@ public class SplashActivity extends BaseActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 321) {
+        if (requestCode == Constants.resultCode) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     //如果没有获取权限，那么可以提示用户去设置界面--->应用权限开启权限
