@@ -9,6 +9,7 @@ package com.baidu.codereview.bean;
  *     version: 1.0
  * </pre>
  */
-public class SPBean {
-    public static final String IMAGE_PATH = "imagePath";
+public class SpBean {
+
+    public static String File="file";
 }

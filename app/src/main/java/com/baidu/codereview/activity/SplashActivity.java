@@ -1,14 +1,22 @@
 package com.baidu.codereview.activity;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Handler;
+import android.os.Message;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.baidu.codereview.R;
-import com.baidu.codereview.bean.SPBean;
+import com.baidu.codereview.bean.SpBean;
 import com.baidu.codereview.ipconfig.Api;
 import com.baidu.codereview.ipconfig.OkhttpUtil;
+import com.baidu.codereview.uitls.DownloadUtil;
 import com.baidu.codereview.uitls.GlideUtil;
 import com.baidu.codereview.uitls.SPUtils;
 
@@ -16,8 +24,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.IOException;
 
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Request;
@@ -36,26 +48,68 @@ public class SplashActivity extends BaseActivity {
 
     private static final String TAG = "SplashActivity";
 
+    // 要申请的权限
+    private String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+    private ImageView mImgSplash;
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            file = (File) msg.obj;
+            SPUtils.getInstance().put(SpBean.File, file.getAbsolutePath());
+            GlideUtil.loadFile(SplashActivity.this, file, mImgSplash);
+        }
+    };
+
+    private File file;
+
     @Override
     protected void initData() {
-        final ImageView mImgSplash = findViewById(R.id.img_splash);
-        //网络请求，获取图片地址
-        initImage(mImgSplash);
-        postDelayed(mImgSplash);
+        mImgSplash = findViewById(R.id.img_splash);
+        initPremission();
+        postDelayed();
     }
 
-    private void postDelayed(final ImageView mImgSplash) {
+    private void initPremission() {
+        int i = ContextCompat.checkSelfPermission(getApplicationContext(), permissions[0]);
+        int j = ContextCompat.checkSelfPermission(getApplicationContext(), permissions[1]);
+        if (i != PackageManager.PERMISSION_GRANTED || j != PackageManager.PERMISSION_GRANTED) {
+            //        // 如果没有授予该权限，就去提示用户请求
+            startRequestPermission();
+        } else {
+            File downloadFile = new File(getExternalFilesDir(null) + File.separator + getPackageName());
+            if (!downloadFile.exists()) {
+                Log.i(TAG, "initPremission:" + downloadFile.getName());
+                boolean mkdirs = downloadFile.mkdirs();
+                Log.i(TAG, "onRequestPermissionsResult:" + mkdirs);
+            }
+        }
+
+    }
+
+    private void startRequestPermission() {
+        ActivityCompat.requestPermissions(this, permissions, 321);
+    }
+
+    private void postDelayed() {
+
+
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-
-                downLoad(mImgSplash);
-
+                String fileName = SPUtils.getInstance().getString(SpBean.File);
+                if (!TextUtils.isEmpty(fileName)) {
+                    File file = new File(fileName);
+                    GlideUtil.loadFile(SplashActivity.this, file, mImgSplash);
+                    goToActivity();
+                    return;
+                }
+                downLoad();
             }
         }, 3000);
     }
 
-    private void downLoad(final ImageView mImgSplash) {
+    private void downLoad() {
         Request request = new Request.Builder()
                 .url(Api.banner)
                 .get()//默认就是GET请求，可以不写
@@ -68,12 +122,12 @@ public class SplashActivity extends BaseActivity {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                success(response, mImgSplash);
+                success(response);
             }
         });
     }
 
-    private void success(Response response, ImageView mImgSplash) throws IOException {
+    private void success(Response response) throws IOException {
         String string = response.body().string();
         Log.i(TAG, "onResponse:" + string);
         try {
@@ -81,18 +135,18 @@ public class SplashActivity extends BaseActivity {
             JSONArray jsonArray = (JSONArray) jsonObject.get("data");
             JSONObject jsonObject1 = jsonArray.getJSONObject(0);
             final String imagePath = (String) jsonObject1.get("imagePath");
-            doSomeThings(imagePath, mImgSplash);
+            doSomeThings(imagePath);
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    private void doSomeThings(final String imagePath, final ImageView mImgSplash) {
+    private void doSomeThings(final String imagePath) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                loadBitMap(imagePath, mImgSplash);
+                loadBitMap(imagePath);
                 goToActivity();
             }
         });
@@ -103,16 +157,29 @@ public class SplashActivity extends BaseActivity {
         startActivity(intent);
     }
 
-    private void loadBitMap(String imagePath, ImageView mImgSplash) {
-        SPUtils.getInstance().put(SPBean.IMAGE_PATH, imagePath);
-        GlideUtil.loadBitmap(SplashActivity.this, imagePath, mImgSplash);
-    }
+    private void loadBitMap(final String imagePath) {
+        //下载url
+        DownloadUtil.get(this).download(imagePath, getApplication().getPackageName(), new DownloadUtil.OnDownloadListener() {
 
-    private void initImage(ImageView mImgSplash) {
-        String imagePath = SPUtils.getInstance().getString(SPBean.IMAGE_PATH);
-        if (imagePath != null) {
-            GlideUtil.loadBitmap(SplashActivity.this, imagePath, mImgSplash);
-        }
+            @Override
+            public void onDownloadSuccess(File nameFromUrl) {
+                //子线程
+                Message message = new Message();
+                message.obj = nameFromUrl;
+                message.what = 0;
+                mHandler.sendMessage(message);
+            }
+
+            @Override
+            public void onDownloading(int progress) {
+
+            }
+
+            @Override
+            public void onDownloadFailed() {
+
+            }
+        });
     }
 
     @Override
@@ -120,4 +187,21 @@ public class SplashActivity extends BaseActivity {
         return R.layout.activity_splash;
     }
 
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 321) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    //如果没有获取权限，那么可以提示用户去设置界面--->应用权限开启权限
+                } else {
+                    //获取权限成功提示
+                    Toast toast = Toast.makeText(this, "获取权限成功", Toast.LENGTH_LONG);
+                    toast.setGravity(Gravity.CENTER, 0, 0);
+                    toast.show();
+                }
+            }
+        }
+    }
 }
