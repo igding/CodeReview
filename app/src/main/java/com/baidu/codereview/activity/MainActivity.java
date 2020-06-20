@@ -30,9 +30,11 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void initData() {
         final RecyclerView mRvMain = findViewById(R.id.rv_main);
-
         mRvMain.setLayoutManager(new LinearLayoutManager(this));
+        downLoad(mRvMain);
+    }
 
+    private void downLoad(final RecyclerView mRvMain) {
         Request request = new Request.Builder()
                 .url(Api.main)
                 .get()//默认就是GET请求，可以不写
@@ -45,31 +47,45 @@ public class MainActivity extends BaseActivity {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                String string = response.body().string();
-                try {
-                    JSONObject jsonObject = new JSONObject(string);
-                    JSONObject data = (JSONObject) jsonObject.get("data");
-                    JSONArray datas = (JSONArray) data.get("datas");
-                    final List<MainBean> mainBeans = new ArrayList<>();
-                    for (int i = 0; i < datas.length(); i++) {
-                        JSONObject jsonObject1 = datas.getJSONObject(i);
-                        String link = (String) jsonObject1.get("link");
-                        String title = (String) jsonObject1.get("title");
-                        MainBean mainBean = new MainBean();
-                        mainBean.setLink(link);
-                        mainBean.setTitle(title);
-                        mainBeans.add(mainBean);
-                    }
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            mRvMain.setAdapter(new MainAdadpter(MainActivity.this, mainBeans));
-                        }
-                    });
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+                String string = suceess(response, mRvMain);
                 Log.i(TAG, "onResponse:" + string);
+            }
+        });
+    }
+
+    private String suceess(Response response, final RecyclerView mRvMain) throws IOException {
+        String string = response.body().string();
+        try {
+            final List<MainBean> mainBeans = getMainBeans(string);
+            setAdapter(mRvMain, mainBeans);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return string;
+    }
+
+    private List<MainBean> getMainBeans(String string) throws JSONException {
+        JSONObject jsonObject = new JSONObject(string);
+        JSONObject data = (JSONObject) jsonObject.get("data");
+        JSONArray datas = (JSONArray) data.get("datas");
+        final List<MainBean> mainBeans = new ArrayList<>();
+        for (int i = 0; i < datas.length(); i++) {
+            JSONObject jsonObject1 = datas.getJSONObject(i);
+            String link = (String) jsonObject1.get("link");
+            String title = (String) jsonObject1.get("title");
+            MainBean mainBean = new MainBean();
+            mainBean.setLink(link);
+            mainBean.setTitle(title);
+            mainBeans.add(mainBean);
+        }
+        return mainBeans;
+    }
+
+    private void setAdapter(final RecyclerView mRvMain, final List<MainBean> mainBeans) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mRvMain.setAdapter(new MainAdadpter(MainActivity.this, mainBeans));
             }
         });
     }

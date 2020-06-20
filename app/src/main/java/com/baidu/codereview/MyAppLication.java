@@ -2,6 +2,8 @@ package com.baidu.codereview;
 
 import android.app.Application;
 
+import com.baidu.codereview.uitls.ContextUtils;
+
 /**
  * <pre>
  *     author : handler
@@ -11,9 +13,10 @@ import android.app.Application;
  *     version: 1.0
  * </pre>
  */
-public class MyAppLication extends Application{
+public class MyAppLication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        ContextUtils.init(this);
     }
 }

@@ -5,6 +5,7 @@ import android.widget.ImageView;
 
 import com.baidu.codereview.R;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 
 /**
  * <pre>
@@ -18,7 +19,7 @@ import com.bumptech.glide.Glide;
 public class GlideUtil {
 
     public static void loadBitmap(Context context, String url, ImageView imageView) {
-        Glide.with(context).load(url).placeholder(R.mipmap.ic_launcher_round).into(imageView);
+        Glide.with(context).load(url).diskCacheStrategy(DiskCacheStrategy.ALL).placeholder(R.mipmap.ic_launcher_round).into(imageView);
     }
 
 }
